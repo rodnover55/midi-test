@@ -1,7 +1,10 @@
 import { useId } from 'react';
 import type { QuadCortexState } from '../../../core/devices/quadCortex/engine.ts';
 import { quadCortexAt, readQuadCortexSettings } from '../../../core/devices/quadCortex/engine.ts';
-import { BANK_UP, Body, BodyDefs, COLUMN_X, Glare, Led, LED_ROW_Y } from './Body.tsx';
+import type { ManualControl } from '../manual.ts';
+import { QC_LETTERS, qcFootswitch, qcFootswitchCc } from '../manual.ts';
+import { SwitchHit } from '../SwitchHit.tsx';
+import { BANK_UP, Body, BodyDefs, COLUMN_X, Glare, Led, LED_ROW_Y, ROW_Y } from './Body.tsx';
 import type { LedLight } from './leds.ts';
 import { quadCortexLeds, tempoBlink, tempoLit } from './leds.ts';
 import { FONT } from './palette.ts';
@@ -23,8 +26,11 @@ const TEMPO_OFF: LedLight = { color: '#FFFFFF', level: 'off' };
  * сохранением пропорций. Между сообщениями изображение пересчитывается на
  * текущий момент (`quadCortexAt`): закрывается окно Tempo, идёт запись
  * петли и т. п.
+ *
+ * С `control` щелчок по футсвитчу A–H отправляет его нажатие (CC#35–42 со
+ * значением 127); BANK UP, BANK DOWN и TEMPO не нажимаются.
  */
-export function QuadCortexView({ state }: { state: QuadCortexState }) {
+export function QuadCortexView({ state, control }: { state: QuadCortexState; control?: ManualControl }) {
   const now = useModelTime(state);
   const p = `qc${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const shown = quadCortexAt(state, now);
@@ -55,6 +61,17 @@ export function QuadCortexView({ state }: { state: QuadCortexState }) {
             return <Led key={`${row}-${column}`} p={p} x={x} y={y} light={light} />;
           }),
         )}
+        {control &&
+          QC_LETTERS.map((letter, i) => (
+            <SwitchHit
+              key={letter}
+              cx={COLUMN_X[i % 4]}
+              cy={ROW_Y[Math.floor(i / 4)]}
+              r={8.5}
+              title={`Нажатие футсвитча ${letter} — CC#${qcFootswitchCc(i)}`}
+              onPress={() => control.send([qcFootswitch(control.channel, i)])}
+            />
+          ))}
       </svg>
       <div className="qc-status">{status}</div>
     </>

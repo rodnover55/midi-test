@@ -1,6 +1,9 @@
 import { Fragment } from 'react';
 import type { HxStompState } from '../../../core/devices/hxStomp/engine.ts';
-import { BODY_SIZE, FOOTSWITCH_X, HxBody, HxDefs, SCREEN_RECT } from './Body.tsx';
+import type { ManualControl } from '../manual.ts';
+import { hxFootswitch, hxFootswitchCc } from '../manual.ts';
+import { SwitchHit } from '../SwitchHit.tsx';
+import { BODY_SIZE, FOOTSWITCH_X, FOOTSWITCH_Y, HxBody, HxDefs, SCREEN_RECT } from './Body.tsx';
 import { Footswitch } from './Footswitch.tsx';
 import { useClockActive } from './hooks.ts';
 import { ringLook } from './look.ts';
@@ -13,8 +16,11 @@ import './hxStomp.css';
  * LED-кольцами футсвитчей, под ним — строка состояния. Занимает всё место
  * родителя-flex-колонки; изображение масштабируется с сохранением пропорций
  * {@link BODY_SIZE}. Кольцо TAP мигает в темпе модели по часам страницы.
+ *
+ * С `control` нажатие мыши на FS1–FS3 отправляет CC#49–51 со значением 127,
+ * отпускание — со значением 0.
  */
-export function HxStompView({ state }: { state: HxStompState }) {
+export function HxStompView({ state, control }: { state: HxStompState; control?: ManualControl }) {
   const clockActive = useClockActive(state.tempo.clock ? state.tempo.clock.lastTick : null);
   const parts = statusParts(state, clockActive);
   const status = parts.map((part) => part.text).join(' · ');
@@ -47,6 +53,18 @@ export function HxStompView({ state }: { state: HxStompState }) {
             pressed={state.footswitches[i].pressed}
           />
         ))}
+        {control &&
+          FOOTSWITCH_X.map((cx, i) => (
+            <SwitchHit
+              key={cx}
+              cx={cx}
+              cy={FOOTSWITCH_Y}
+              r={9.6}
+              title={`Нажатие футсвитча FS${i + 1} — CC#${hxFootswitchCc(i)} (127 — нажатие, 0 — отпускание)`}
+              onPress={() => control.send([hxFootswitch(control.channel, i, true)])}
+              onRelease={() => control.send([hxFootswitch(control.channel, i, false)])}
+            />
+          ))}
       </svg>
       <div className="hx-status">
         {parts.map((part, i) => (

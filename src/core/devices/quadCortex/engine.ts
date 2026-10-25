@@ -448,21 +448,32 @@ function expression(state: QuadCortexState, pedal: number, value: number): Outco
 /** Результат вызова сцены без пометок. */
 interface SceneResult {
   state: QuadCortexState;
+  /** Сцена сменилась или закрыт Tuner; false — состояние не изменилось. */
   applied: boolean;
+  /** Сцена уже была активна. */
+  repeated: boolean;
   letter: Letter;
   /** Пометка о том, что темп стал неизвестен; пустая строка — темп не менялся. */
   tempoNote: string;
+  /** Вызов сцены закрыл открытый Tuner. */
+  tunerClosed: boolean;
 }
 
 /**
- * Вызывает сцену. Повторный вызов текущей сцены ничего не меняет.
+ * Вызывает сцену. Вызов сцены закрывает Tuner, если он открыт (наблюдение на
+ * приборе; в документации не описано), в том числе повторный вызов текущей
+ * сцены — допущение: прибор, по-видимому, закрывает Tuner на любую команду
+ * сцены. Других изменений повторный вызов не делает.
  * Переключения STOMP покидаемой сцены сохраняются только при SCENE BYPASS
  * BEHAVIOR = Always overwrite bypass state; при TEMPO MODE = PRESET темп
  * становится неизвестным, потому что темп может быть назначен на сцену.
  */
 function selectScene(state: QuadCortexState, letter: Letter, settings: QuadCortexSettings): SceneResult {
+  const tunerClosed = state.screens.includes('tuner');
+  const screens = tunerClosed ? closeScreen(state.screens, 'tuner') : state.screens;
   if (state.scene === letter) {
-    return { state, applied: false, letter, tempoNote: '' };
+    const next = tunerClosed ? patch(state, { screens }) : state;
+    return { state: next, applied: tunerClosed, repeated: true, letter, tempoNote: '', tunerClosed };
   }
   const left = state.scene ?? '?';
   let stompFlips = state.stompFlips;
@@ -471,21 +482,28 @@ function selectScene(state: QuadCortexState, letter: Letter, settings: QuadCorte
   }
   const tempo = tempoAfterRecall(state.tempo, settings);
   const tempoNote = tempo.bpm === null && state.tempo.bpm !== null ? SCENE_TEMPO_NOTE : '';
-  return { state: { ...state, scene: letter, stompFlips, tempo }, applied: true, letter, tempoNote };
+  return {
+    state: { ...state, scene: letter, stompFlips, tempo, screens },
+    applied: true,
+    repeated: false,
+    letter,
+    tempoNote,
+    tunerClosed,
+  };
 }
 
 /**
- * Описывает вызов сцены.
+ * Описывает вызов сцены: «Сцена B», «Сцена B уже активна», с пометкой
+ * « (Tuner закрыт)», если вызов закрыл Tuner.
  *
  * @param prefix начало описания, например `Футсвитч C (SCENE): `; пустая
  *   строка — описание начинается со слова «Сцена».
  * @param note пометка в конце описания.
  */
 function sceneOutcome(result: SceneResult, prefix: string, note: string): Outcome {
-  const scene = `${prefix}${prefix ? 'сцена' : 'Сцена'} ${result.letter}`;
-  return result.applied
-    ? outcome(result.state, 'applied', `${scene}${result.tempoNote}${note}`)
-    : outcome(result.state, 'ignored', `${scene} уже активна${note}`);
+  const scene = `${prefix}${prefix ? 'сцена' : 'Сцена'} ${result.letter}${result.repeated ? ' уже активна' : ''}`;
+  const tuner = result.tunerClosed ? ' (Tuner закрыт)' : '';
+  return outcome(result.state, result.applied ? 'applied' : 'ignored', `${scene}${tuner}${result.tempoNote}${note}`);
 }
 
 /** CC#47: режим из Mode Slot 1–3 по значению 0–2. */

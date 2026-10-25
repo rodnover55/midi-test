@@ -49,6 +49,37 @@ export function parseChannel(value: unknown): ChannelSetting | null {
 }
 
 /**
+ * Версия формата сохранённой конфигурации. Сохраняется в поле `version`
+ * рядом с конфигурацией и читается {@link migrateConfig}.
+ */
+export const CONFIG_VERSION = 2;
+
+/**
+ * Переводит прочитанную конфигурацию прежних версий в текущую.
+ *
+ * Конфигурация без поля `version` или с версией меньше 2 сохранена, когда
+ * «Режим при включении» Quad Cortex по умолчанию был «неизвестен», и хранит
+ * это значение, даже если пользователь его не выбирал. Такое значение
+ * удаляется, и {@link normalizeConfig} подставит текущее значение по
+ * умолчанию; остальные значения не меняются.
+ *
+ * @param raw разобранный JSON; допускается что угодно, в том числе undefined.
+ * @returns новый объект с исправленными значениями или `raw` без изменений,
+ *   если исправлять нечего. Сам `raw` не изменяется.
+ */
+export function migrateConfig(raw: unknown): unknown {
+  const root = asRecord(raw);
+  const version = typeof root.version === 'number' ? root.version : 1;
+  const qc = asRecord(asRecord(root.devices).qc);
+  const settings = asRecord(qc.settings);
+  if (version >= 2 || settings.startModeSlot !== 'unknown') {
+    return raw;
+  }
+  const { startModeSlot: _, ...rest } = settings;
+  return { ...root, devices: { ...asRecord(root.devices), qc: { ...qc, settings: rest } } };
+}
+
+/**
  * Строит полную конфигурацию из прочитанных данных.
  *
  * Отсутствующие и недопустимые значения заменяются значениями по умолчанию:

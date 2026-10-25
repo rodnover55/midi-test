@@ -31,7 +31,7 @@ describe('Quad Cortex: прибор и настройки', () => {
       modeSlot1: 'PRESET',
       modeSlot2: 'SCENE',
       modeSlot3: 'STOMP',
-      startModeSlot: 'unknown',
+      startModeSlot: '2',
       startSetlist: 'unknown',
       sceneBypassBehavior: 'overwrite',
       tempoMode: 'GLOBAL',
@@ -55,7 +55,7 @@ describe('Quad Cortex: прибор и настройки', () => {
   });
 
   it('после включения неизвестны пресет, сцена, режим, темп и педали; экраны закрыты, петли нет', () => {
-    const { state } = new TestDevice();
+    const { state } = new TestDevice({ startModeSlot: 'unknown' });
     expect(state.preset).toEqual({
       setlist: null,
       setlistName: null,
@@ -78,6 +78,19 @@ describe('Quad Cortex: прибор и настройки', () => {
     expect(state.looper).toMatchObject({ transport: 'empty', armed: null, undo: null, quantize: null, routing: null });
     expect(state.footswitches.map((f) => f.letter)).toEqual([...LETTERS]);
     expect(state.footswitches.every((f) => f.role === null && f.label === null && f.active === null)).toBe(true);
+  });
+
+  it('по умолчанию после включения режим — SCENE из Mode Slot 2', () => {
+    const { state } = new TestDevice();
+    expect(state.mode).toEqual({ name: 'SCENE', rows: ['SCENE', 'SCENE'], slot: 2 });
+    expect(state.footswitches.map((f) => f.role)).toEqual(Array(8).fill('scene'));
+    expect(state.footswitches.every((f) => f.active === null)).toBe(true);
+  });
+
+  it('при режиме «неизвестен» после включения режим неизвестен; вариант есть в списке', () => {
+    const def = quadCortexEngine.settings.find((d) => d.key === 'startModeSlot');
+    expect(def?.type === 'select' ? def.options.map((o) => o.value) : []).toEqual(['unknown', '1', '2', '3']);
+    expect(new TestDevice({ startModeSlot: 'unknown' }).state.mode).toBeNull();
   });
 
   it('берёт сетлист и режим после включения из настроек', () => {
@@ -395,7 +408,7 @@ describe('Футсвитчи A–H (CC#35–42)', () => {
   });
 
   it('при неизвестном режиме пресет и сцена после нажатия неизвестны', () => {
-    const qc = new TestDevice({ startSetlist: '1' });
+    const qc = new TestDevice({ startSetlist: '1', startModeSlot: 'unknown' });
     qc.pc(10);
     qc.cc(43, 2);
     expect(qc.cc(35, 127)).toEqual({
@@ -406,7 +419,7 @@ describe('Футсвитчи A–H (CC#35–42)', () => {
     expect(qc.state.scene).toBeNull();
   });
 
-  it('при открытом Tuner не выполняют действие; Gig View поверх Tuner их не перехватывает', () => {
+  it('при открытом Tuner не выполняют действие; под Gig View вызов сцены закрывает Tuner', () => {
     const qc = new TestDevice({ startModeSlot: '2' });
     qc.cc(45, 127);
     expect(qc.cc(35, 127)).toEqual({
@@ -416,7 +429,9 @@ describe('Футсвитчи A–H (CC#35–42)', () => {
     expect(qc.state.scene).toBeNull();
     expect(qc.state.footswitches[0]).toMatchObject({ role: 'tuner', label: null, active: null });
     qc.cc(46, 127);
-    expect(qc.cc(35, 127, 2000)).toEqual({ effect: 'applied', text: 'Футсвитч A (SCENE): сцена A' });
+    expect(qc.cc(35, 127, 2000)).toEqual({ effect: 'applied', text: 'Футсвитч A (SCENE): сцена A (Tuner закрыт)' });
+    expect(qc.state.screens).toEqual(['gigView']);
+    expect(qc.state.scene).toBe('A');
   });
 
   it('в окне Tempo при TEMPO MODE = GLOBAL закрывают окно без своего действия, при PRESET — без действия', () => {
@@ -480,6 +495,34 @@ describe('Сцены (CC#43)', () => {
     expect(qc.cc(43, 5).text).toBe('Сцена F');
     expect(qc.state).toMatchObject({ scene: 'F', screens: ['looper'] });
     expect(qc.state.tempo.bpm).toBe(120);
+  });
+
+  it('смена сцены закрывает Tuner, остальные экраны остаются', () => {
+    const qc = new TestDevice();
+    qc.cc(46, 127);
+    qc.cc(45, 127);
+    expect(qc.cc(43, 1)).toEqual({ effect: 'applied', text: 'Сцена B (Tuner закрыт)' });
+    expect(qc.state).toMatchObject({ scene: 'B', screens: ['gigView'] });
+    expect(qc.cc(43, 2)).toEqual({ effect: 'applied', text: 'Сцена C' });
+  });
+
+  it('повтор текущей сцены при открытом Tuner закрывает Tuner, сцену не меняет', () => {
+    const qc = new TestDevice({ startModeSlot: '3' });
+    qc.cc(43, 2);
+    qc.cc(37, 127);
+    qc.cc(45, 127);
+    const flips = qc.state.stompFlips;
+    expect(qc.cc(43, 2)).toEqual({ effect: 'applied', text: 'Сцена C уже активна (Tuner закрыт)' });
+    expect(qc.state).toMatchObject({ scene: 'C', screens: [] });
+    expect(qc.state.stompFlips).toBe(flips);
+    expect(qc.cc(43, 2)).toEqual({ effect: 'ignored', text: 'Сцена C уже активна' });
+  });
+
+  it('футсвитч SCENE при Tuner сверху сцену не меняет и Tuner не закрывает', () => {
+    const qc = new TestDevice();
+    qc.cc(45, 127);
+    expect(qc.cc(36, 127).effect).toBe('ignored');
+    expect(qc.state).toMatchObject({ scene: null, screens: ['tuner'] });
   });
 });
 
@@ -661,7 +704,12 @@ describe('Режимы (CC#47)', () => {
   });
 
   it('пустой слот режим не меняет, слот HYBRID вызывает HYBRID', () => {
-    const qc = new TestDevice({ modeSlot1: 'SCENE+STOMP', modeSlot2: 'PRESET', modeSlot3: 'EMPTY' });
+    const qc = new TestDevice({
+      modeSlot1: 'SCENE+STOMP',
+      modeSlot2: 'PRESET',
+      modeSlot3: 'EMPTY',
+      startModeSlot: 'unknown',
+    });
     expect(qc.cc(47, 2)).toEqual({ effect: 'ignored', text: 'Mode Slot 3 пуст — режим не меняется' });
     expect(qc.state.mode).toBeNull();
     expect(qc.cc(47, 0)).toEqual({ effect: 'applied', text: 'Режим HYBRID: SCENE (A–D) + STOMP (E–H) (Mode Slot 1)' });
@@ -671,8 +719,8 @@ describe('Режимы (CC#47)', () => {
   it('работает при открытом Looper X', () => {
     const qc = new TestDevice();
     qc.cc(48, 0);
-    expect(qc.cc(47, 1).effect).toBe('applied');
-    expect(qc.state.mode?.name).toBe('SCENE');
+    expect(qc.cc(47, 2).effect).toBe('applied');
+    expect(qc.state.mode?.name).toBe('STOMP');
     expect(qc.state.screens).toEqual(['looper']);
   });
 });

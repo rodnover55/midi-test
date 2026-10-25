@@ -5,12 +5,14 @@
 
 import { useSyncExternalStore } from 'react';
 import type { AppConfig } from '../core/config.ts';
-import { LOG_LIMIT_RANGE, normalizeConfig, parseChannel } from '../core/config.ts';
+import { CONFIG_VERSION, LOG_LIMIT_RANGE, migrateConfig, normalizeConfig, parseChannel } from '../core/config.ts';
 import { ENGINES } from '../core/devices/registry.ts';
 import type { ChannelSetting, DeviceId, DeviceSettings, DeviceStateBase } from '../core/devices/types.ts';
 import { resolveSettings } from '../core/devices/types.ts';
 import type { LogEntry, MonitorOptions, RealtimeStats } from '../core/monitor.ts';
 import { Monitor } from '../core/monitor.ts';
+import type { MidiBytes } from './devices/manual.ts';
+import { MANUAL_PORT } from './devices/manual.ts';
 
 /** Входной MIDI-порт, видимый браузеру. */
 export interface PortStatus {
@@ -67,7 +69,7 @@ function loadConfig(): AppConfig {
   } catch {
     raw = undefined;
   }
-  return normalizeConfig(raw, ENGINES);
+  return normalizeConfig(migrateConfig(raw), ENGINES);
 }
 
 function monitorOptions(c: AppConfig): MonitorOptions {
@@ -152,15 +154,8 @@ function flush(): void {
   setState(next);
 }
 
-function receive(port: string, event: MIDIMessageEvent): void {
-  if (!event.data) {
-    return;
-  }
-  const result = monitor.process({
-    port,
-    bytes: Array.from(event.data),
-    time: performance.timeOrigin + event.timeStamp,
-  });
+function ingest(port: string, bytes: number[], time: number): void {
+  const result = monitor.process({ port, bytes, time });
   if (result.entry) {
     pendingEntries.push(result.entry);
   }
@@ -168,6 +163,24 @@ function receive(port: string, event: MIDIMessageEvent): void {
     pendingDevices = true;
   }
   scheduleFlush();
+}
+
+function receive(port: string, event: MIDIMessageEvent): void {
+  if (event.data) {
+    ingest(port, Array.from(event.data), performance.timeOrigin + event.timeStamp);
+  }
+}
+
+/**
+ * Подаёт в монитор сообщения ручного управления по порядку, как полученные
+ * сейчас с порта {@link MANUAL_PORT}: они меняют состояние устройств и
+ * пишутся в журнал. На MIDI-выходы ничего не отправляется.
+ */
+export function sendManual(messages: readonly MidiBytes[]): void {
+  const time = performance.timeOrigin + performance.now();
+  for (const bytes of messages) {
+    ingest(MANUAL_PORT, [...bytes], time);
+  }
 }
 
 /** Подписывает включённые порты на приём, снимает подписку с выключенных и обновляет список портов. */
@@ -220,7 +233,7 @@ export async function startMidi(): Promise<void> {
 }
 
 function updateConfig(config: AppConfig): void {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({ ...config, version: CONFIG_VERSION }));
   const changed = monitor.configure(monitorOptions(config));
   setState({
     config,

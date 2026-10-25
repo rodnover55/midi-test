@@ -1,12 +1,17 @@
+import { useMemo } from 'react';
 import { ENGINES } from '../../core/devices/registry.ts';
 import type { DeviceId } from '../../core/devices/types.ts';
 import { CHANNEL_OPTIONS, channelLabel } from '../settings/SettingsDialog.tsx';
-import { send, useStore } from '../store.ts';
+import { send, sendManual, useStore } from '../store.ts';
+import { manualChannel } from './manual.ts';
+import { ManualBar } from './ManualBar.tsx';
 import { DEVICE_VIEWS } from './views.ts';
 
 /**
  * Панель процессора: заголовок с моделью, прошивкой, MIDI-каналом и
- * индикатором входящих сообщений, под ним — изображение устройства.
+ * индикатором входящих сообщений, под ним — строка ручного управления и
+ * изображение устройства с нажимаемыми футсвитчами. Ручные действия подаются
+ * в монитор на канале устройства (при Omni — на канале 1).
  */
 export function DevicePanel({ id }: { id: DeviceId }) {
   const engine = ENGINES[id];
@@ -14,6 +19,7 @@ export function DevicePanel({ id }: { id: DeviceId }) {
   const channel = useStore((s) => s.config.devices[id].channel);
   const activity = useStore((s) => s.activity[id]);
   const View = DEVICE_VIEWS[id];
+  const control = useMemo(() => ({ channel: manualChannel(channel), send: sendManual }), [channel]);
   return (
     <div className={`device-panel dev-${id}`}>
       <div className="device-head">
@@ -50,8 +56,9 @@ export function DevicePanel({ id }: { id: DeviceId }) {
           Сброс
         </button>
       </div>
+      <ManualBar id={id} state={state} control={control} />
       <div className="device-body">
-        <View state={state} />
+        <View state={state} control={control} />
       </div>
     </div>
   );

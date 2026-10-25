@@ -201,9 +201,9 @@ export const QUAD_CORTEX_SETTINGS: readonly SettingDef[] = [
     label: 'Режим при включении',
     hint:
       'Режим футсвитчей до первого CC#47; от него зависит действие CC#35–42. ' +
-      'Прибор помнит режим сам, по MIDI его не узнать.',
+      'Прибор помнит режим сам, по MIDI его не узнать. По умолчанию — Mode Slot 2 (по умолчанию в нём SCENE).',
     type: 'select',
-    default: 'unknown',
+    default: '2',
     options: [
       { value: 'unknown', label: 'неизвестен' },
       { value: '1', label: 'Mode Slot 1' },

@@ -1,11 +1,14 @@
 import type { ComponentType } from 'react';
 import type { DeviceId, DeviceStateBase } from '../../core/devices/types.ts';
+import type { ManualControl } from './manual.ts';
 import { HxStompView } from './hxStomp/HxStompView.tsx';
 import { QuadCortexView } from './quadCortex/QuadCortexView.tsx';
 
 /** Свойства компонента, рисующего устройство. */
 export interface DeviceViewProps<S extends DeviceStateBase = DeviceStateBase> {
   state: S;
+  /** Ручное управление щелчком по футсвитчам; не задано — футсвитчи не нажимаются. */
+  control?: ManualControl;
 }
 
 /** Компонент изображения каждого устройства. */

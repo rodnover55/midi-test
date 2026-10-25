@@ -503,3 +503,52 @@ legend {
   font-size: 11px;
   color: var(--accent);
 }
+
+/* Строка ручного управления устройством и нажимаемые футсвитчи */
+
+.manual-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.manual-bar button {
+  padding: 1px 8px;
+}
+
+.manual-bar select {
+  padding: 1px 4px;
+}
+
+.manual-bar select.current {
+  border-color: var(--accent);
+}
+
+.manual-group {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.manual-group button {
+  min-width: 24px;
+  padding: 1px 5px;
+}
+
+.switch-hit {
+  fill: #fff;
+  fill-opacity: 0;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.switch-hit:hover {
+  fill-opacity: 0.1;
+}
+
+.switch-hit:active {
+  fill-opacity: 0.18;
+}
