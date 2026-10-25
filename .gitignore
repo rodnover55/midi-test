@@ -1,0 +1,10 @@
+node_modules
+dist
+research-downloads
+.work
+.shots
+.playwright-cli
+.playwright
+*.part
+docs/research
+research-scripts

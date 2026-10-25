@@ -1,0 +1,56 @@
+/*
+ * IBM Plex Sans — шрифт интерфейса CorOS и надписей корпуса Quad Cortex
+ * (SIL Open Font License 1.1, уведомление о лицензии записано в файлах шрифта).
+ * Начертания: Light — буквы A–H на корпусе, Regular — текст экрана, Medium —
+ * VOLUME, TEMPO, MODE, HOLD: TUNER, SemiBold — название режима, Bold — шапка
+ * The Grid и имена на плитках.
+ */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-Light.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-SemiBold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/IBMPlexSans-Bold.ttf') format('truetype');
+}
+
+/* Строка состояния Quad Cortex под изображением прибора. */
+.qc-status {
+  flex: none;
+  padding: 4px 4px 0;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--text);
+}

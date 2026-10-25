@@ -1,0 +1,48 @@
+/* Изображение HX Stomp: корпус и строка состояния под ним. */
+
+.hx-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hx-svg text {
+  user-select: none;
+}
+
+.hx-status {
+  flex: none;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.hx-status-sep {
+  color: var(--muted);
+}
+
+/* Цвет кольца, о котором говорит часть строки состояния. */
+.hx-led {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-radius: 50%;
+  vertical-align: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+
+/* Мигание номеров пресетов банка в очереди. */
+.hx-blink {
+  animation: hx-blink 1s step-end infinite;
+}
+
+@keyframes hx-blink {
+  50% {
+    opacity: 0.15;
+  }
+}
